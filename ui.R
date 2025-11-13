@@ -9,7 +9,6 @@ shinyUI(fluidPage(
       selectInput("file", "Choose CSV File:",
                   choices = list.files("data", pattern = "\\.(csv)$")),
 
-      uiOutput("group_var_ui"),
 
       uiOutput("filter_controls"),
 
@@ -29,7 +28,9 @@ shinyUI(fluidPage(
     mainPanel(
       plotly::plotlyOutput("hist_plot"),
       br(), br(),
-      plotly::plotlyOutput("summary_plot")
+      plotly::plotlyOutput("summary_plot"),
+      br(),
+      textOutput("summary_line")
     )
   )
 ))
