@@ -20,23 +20,27 @@ shinyServer(function(input, output, session) {
     # Render UI
     selectizeInput("group_vars", "Group by (one or more):",
                    choices = cat_vars,
-                   selected = head(cat_vars, 1),
+                   selected = head(cat_vars, 3),
                    multiple = TRUE)
   })
 
   output$filter_controls <- renderUI({
     req(input$group_vars)
     df <- dataset()
+    
     controls <- lapply(input$group_vars, function(var) {
       vals <- unique(df[[var]])
+      selected_vals <- isolate(input[[var]])  # preserve previous selection if it exists
+      
       selectInput(
-        inputId = paste0("filter_", var),
-        label = paste("Filter values for", var),
+        inputId = var,
+        label = paste("Filter", var),
         choices = vals,
-        selected = vals,
+        selected = selected_vals,  # NULL if no prior selection
         multiple = TRUE
       )
     })
+    
     do.call(tagList, controls)
   })
 
