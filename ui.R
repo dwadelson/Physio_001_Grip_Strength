@@ -2,7 +2,7 @@
 library(shiny)
 
 shinyUI(fluidPage(
-  titlePanel("Interactive Histogram Explorer"),
+  titlePanel("Physio 001 - Interactive Data Explorer"),
 
   sidebarLayout(
     sidebarPanel(
