@@ -63,7 +63,7 @@ shinyServer(function(input, output, session) {
     df <- filtered_data()
     
     # Determine grouping variables: any filtered categorical variable
-    cat_vars <- names(df)[sapply(df, is.character) & names(df) != "gender"]
+    cat_vars <- names(df)[sapply(df, is.character)]
     group_vars <- c()
     
     for (var in cat_vars) {
@@ -110,7 +110,7 @@ shinyServer(function(input, output, session) {
     }
     
     ggplotly(p)
-  })
+  })  #output$histplot
 
   output$summary_plot <- renderPlotly({
     req(input$update_plot)
@@ -119,7 +119,7 @@ shinyServer(function(input, output, session) {
     df <- filtered_data()
     
     # Determine grouping variables: any categorical variable with a non-empty filter
-    cat_vars <- names(df)[sapply(df, is.character) & names(df) != "gender"]
+    cat_vars <- names(df)[sapply(df, is.character)]
     group_vars <- c()
     
     for (var in cat_vars) {
@@ -143,8 +143,8 @@ shinyServer(function(input, output, session) {
     summary_df <- df %>%
       group_by(group) %>%
       summarise(
-        mean = mean(value),
-        sem = sd(value) / sqrt(n()),
+        mean = round(mean(value),1),
+        sem = round(sd(value) / sqrt(n()),1),
         .groups = "drop"
       )
     
@@ -156,7 +156,83 @@ shinyServer(function(input, output, session) {
       theme(axis.text.x = element_text(angle = 30, hjust = 1))
     
     ggplotly(p)
-  })
+  }) #output$summaryplot
+  
+  output$summary_table <- renderTable({
+    req(input$update_plot)
+    if (!input$show_summary) return(NULL)
+    
+    df <- filtered_data()
+    
+    # Detect grouping variables based on non-empty filters
+    cat_vars <- names(df)[sapply(df, is.character)]
+    group_vars <- c()
+    for (var in cat_vars) {
+      filter_vals <- input[[paste0("filter_", var)]]
+      if (!is.null(filter_vals) && length(filter_vals) > 0) {
+        group_vars <- c(group_vars, var)
+      }
+    }
+    
+    if (length(group_vars) == 0) {
+      df$group <- "All"
+    } else {
+      df <- df %>% unite("group", all_of(group_vars), sep = " | ", remove = FALSE)
+    }
+    
+    df <- df %>%
+      filter(!is.na(value),
+             value >= input$bin_min,
+             value <= input$bin_max)
+    
+    summary_df <- df %>%
+      group_by(group) %>%
+      summarise(
+        n = n(),
+        mean = mean(value),1,
+        sem = sd(value) / sqrt(n),
+        .groups = "drop"
+      )
+    
+    
+    # Statistical test and post-hoc comparison
+    unique_groups <- unique(df$group)
+    
+    if (length(unique_groups) == 2) {
+      # t-test
+      test_result <- t.test(value ~ group, data = df)
+      p_val <- test_result$p.value
+      stat_label <- if (p_val < 0.05) paste0("p = ", signif(p_val, 2)) else "ns"
+      summary_df$stat <- c(stat_label, stat_label)
+      
+    } else if (length(unique_groups) > 2) {
+      # ANOVA
+      aov_model <- aov(value ~ group, data = df)
+      anova_p <- summary(aov_model)[[1]][["Pr(>F)"]][1]
+      
+      if (anova_p < 0.05) {
+        # Post-hoc: Tukey HSD
+        tukey <- TukeyHSD(aov_model)
+        comparisons <- as.data.frame(tukey$group)
+        comparisons$comparison <- rownames(comparisons)
+        
+        # Extract only significant pairs
+        sig_comparisons <- comparisons %>%
+          filter(`p adj` < 0.05) %>%
+          select(comparison, `p adj`)
+        
+        # Optional: Show number of significant pairs in the summary
+        stat_label <- paste0("Tukey: ", nrow(sig_comparisons), " sig")
+        summary_df$stat <- stat_label
+      } else {
+        summary_df$stat <- "ANOVA: ns"
+      }
+      
+    } else {
+      summary_df$stat <- NA_character_
+    }
+    summary_df
+  })  #output$summarytable
 
   generate_static_plots <- function() {
     req(input$group_vars)
@@ -189,7 +265,7 @@ shinyServer(function(input, output, session) {
 
     summary_df <- df %>%
       group_by(group) %>%
-      summarise(mean = mean(value), sem = sd(value) / sqrt(n()), .groups = "drop")
+      summarise(mean = round(mean(value),1), sem = round(sd(value) / sqrt(n()),1), .groups = "drop")
 
     summary <- ggplot(summary_df, aes(x = group, y = mean, fill = group)) +
       geom_col(width = 0.6) +
