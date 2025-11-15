@@ -6,6 +6,7 @@ shinyUI(fluidPage(
 
   sidebarLayout(
     sidebarPanel(
+      textInput("student_name", "Enter your name:", placeholder = "e.g., Alicia Gonzalez"),
       selectInput("file", "Choose CSV File:",
                   choices = list.files("data", pattern = "\\.(csv)$")),
 
@@ -21,15 +22,17 @@ shinyUI(fluidPage(
 
       actionButton("update_plot", "Update Plot"),
       br(), br(),
-      downloadButton("download_pdf", "Download Plots as PDF"),
-      downloadButton("download_png", "Download Plots as PNG")
+     # downloadButton("download_pdf", "Download Plots as PDF"),
+     # downloadButton("download_png", "Download Plots as PNG")
     ),
 
     mainPanel(
       plotly::plotlyOutput("hist_plot"),
-      br(), br(),
+      br(),
+      uiOutput("caption_text"),
+      br(), 
       plotly::plotlyOutput("summary_plot"),
-      br(), br(),
+      br(),
       h4("Summary Table"),
       tableOutput("summary_table")
      # textOutput("summary_line")
